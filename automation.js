@@ -1,15 +1,17 @@
 const puppeteer = require('puppeteer');
 const readline = require('readline');
-const Twit = require('twit');
+const { TwitterApi } = require('twitter-api-v2');
 const { default: OBSWebSocket } = require('obs-websocket-js');
 const fs = require('fs');
 
-const T = new Twit({
-  consumer_key: 'GMaTFsmeqF4fihi5ZEhIbeIwE',
-  consumer_secret: 'IzfrSyea6R9SYe6WM2Te6RGLWV3OryHuES3ETLRmtNQGAtms0w',
-  access_token: '1805482256263192576-lgSLLd5nlQyzP2rnne7ZHRi1g6oNsN',
-  access_token_secret: 'hM2KFF8rc5qZZg2Y4KhzcMijZWORJ8bsPAH3ws2vNCn4J'
+const client = new TwitterApi({
+  appKey: 'H6AaojdUVQ1Ah5HxJcHBVOsnf',
+  appSecret: 'I1vG17I8V18mFSdgLP7QLWRsdfUCuthJ0VIxfMG2LVgc4NepTH',
+  accessToken: '1805482256263192576-KSaLZZnWLJkiwND6bbBDMJa5UBapFy',
+  accessSecret: 'Yo7en12IceEAgDXPwsSTxh8jEBrkax3P9W4FWl7sEw9vK'
 });
+
+const rwClient = client.readWrite;
 
 const obs = new OBSWebSocket();
 
@@ -48,28 +50,17 @@ const scrollComments = async (page) => {
   }
 };
 
-/*
 const postToTwitter = async (videoPath) => {
-  const b64content = fs.readFileSync(videoPath, { encoding: 'base64' });
-
-  T.post('media/upload', { media_data: b64content }, (err, data, response) => {
-    if (err) {
-      console.error('Error uploading media:', err);
-      return;
-    }
-    const mediaIdStr = data.media_id_string;
-    const params = { status: 'Check out this TikTok video!', media_ids: [mediaIdStr] };
-
-    T.post('statuses/update', params, (err, data, response) => {
-      if (err) {
-        console.error('Error posting tweet:', err);
-        return;
-      }
-      console.log('Video posted to Twitter');
-    });
-  });
+  try {
+    const mediaData = await fs.promises.readFile(videoPath);
+    const mediaId = await rwClient.v1.uploadMedia(mediaData, { mimeType: 'video/mp4' });
+    await rwClient.v1.tweet('Check out this TikTok video!', { media_ids: mediaId });
+    console.log('Video posted to Twitter');
+  } catch (e) {
+    console.error('Error posting tweet:', e);
+  }
 };
-*/
+
 const monitorTikTokLikes = async () => {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -86,36 +77,38 @@ const monitorTikTokLikes = async () => {
         });
         const page = await browser.newPage();
     
-    // Definir el tamaño de pantalla a celular, por ejemplo, iPhone X
-    await page.setViewport({ width: 1920, height: 1080 });
-    await page.goto(url);
-
-    // Esperar a que el botón sea visible y hacer clic en él
-    await page.waitForSelector('.css-1kvp3av-DivVoiceControlContainer');
-    await page.click('.css-1kvp3av-DivVoiceControlContainer');
-
-
-    // Iniciar grabación
-    await startRecording();
+        // Definir el tamaño de pantalla a celular, por ejemplo, iPhone X
+        await page.setViewport({ width: 1920, height: 1080 });
+        await page.goto(url);
     
-    // Esperar 10 segundos para iniciar sesión manualmente (si es necesario)
-    await new Promise(resolve => setTimeout(resolve, 7000));
+        // Esperar a que el botón sea visible y hacer clic en él
+        await page.waitForSelector('.css-1kvp3av-DivVoiceControlContainer');
+        await page.click('.css-1kvp3av-DivVoiceControlContainer');
     
-    // Hacer scroll lentamente hacia abajo durante 30 segundos
-    let startTime = Date.now();
-    while (Date.now() - startTime < 30000) {
-      await page.evaluate(() => {
-        window.scrollBy(0, 15); // Ajusta el valor de scroll según necesites
+        // Iniciar grabación
+        await startRecording();
+        
+        // Esperar 10 segundos para iniciar sesión manualmente (si es necesario)
+        await new Promise(resolve => setTimeout(resolve, 7000));
+        
+        // Hacer scroll lentamente hacia abajo durante 30 segundos
+        let startTime = Date.now();
+        while (Date.now() - startTime < 30000) {
+          await page.evaluate(() => {
+            window.scrollBy(0, 15); // Ajusta el valor de scroll según necesites
+          });
+          await new Promise(resolve => setTimeout(resolve, 200)); // Ajusta la velocidad de scroll
+        }
+    
+        // Detener grabación
+        await stopRecording();
+    
+        // Publicar en Twitter
+        await postToTwitter('C:/Users/Hyzmael/Videos/intento.mp4'); // Reemplaza con la ruta correcta del video guardado
+    
+        rl.close();
+        await browser.close();
       });
-      await new Promise(resolve => setTimeout(resolve, 200)); // Ajusta la velocidad de scroll
-    }
-
-    // Detener grabación
-    await stopRecording();
-
-    rl.close();
-    await browser.close();
-  });
-};
-
-monitorTikTokLikes();
+    };
+    
+    monitorTikTokLikes();
