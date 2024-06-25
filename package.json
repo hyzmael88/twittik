@@ -1,0 +1,17 @@
+{
+  "name": "twittik",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "obs-websocket-js": "^5.0.5",
+    "puppeteer": "^22.12.0",
+    "twit": "^2.2.11"
+  }
+}
