@@ -1,16 +1,15 @@
 const puppeteer = require('puppeteer');
 const readline = require('readline');
-const Twitter = require('twitter-lite');
+const { TwitterApi } = require('twitter-api-v2');
 const { default: OBSWebSocket } = require('obs-websocket-js');
 const fs = require('fs');
 
-const client = new Twitter({
-
-  consumer_key: '9o4Q3xB4mzhvTBGSJ0zR4HZw1',
-  consumer_Secret: '2aeonXCTFtYoNtru3nGWvXwFvWbhthPtJbdm4Y62HUXbENplXT',
-  access_token_key: '1805482256263192576-GttweuTFzMYO2SA2KDdOxV83lOm4SP',
-  access_token_secret: 'naaFRSsnSEJ7qZ4UCo0Lp5Xutp8gTSrEtwMP2TStbjGRf',
-  bearer_token: 'AAAAAAAAAAAAAAAAAAAAAO32uQEAAAAApIUQu6p5sfScxCLZ3BWzIOeK0bM%3DID0iEvLJtxvYnzFwK1QKcUDJrApUXFfejoywnVKedy3EfYPsVa'
+// Configuración del cliente de Twitter con la API v2 usando OAuth 1.0a User Context
+const client = new TwitterApi({
+  appKey: 'O7RLYK5mkqfhUGQzpN7SgDcRH',
+  appSecret: 'evwQL9r0ktLyhecgBnUE5FRSXKBZJnMdmO17c4fZvQcMmGYyAv',
+  accessToken: '1805482256263192576-Vas7bZrFxtwoONKq4jbkHD9PvXOQDR',
+  accessSecret: 'wtx48qeyouDvv3WvYo3zyFzfAXmyEd4BPQsAFIYdjVPKj'
 });
 
 const rwClient = client.readWrite;
@@ -52,72 +51,15 @@ const scrollComments = async (page) => {
   }
 };
 
-const postToTwitter = async (videoPath) => {
+const postToTwitter = async () => {
   try {
-    console.log('Reading video file...');
-    const mediaData = await fs.promises.readFile(videoPath);
-
-    console.log('Initializing media upload...');
-    const initResponse = await client.post('media/upload', {
-      command: 'INIT',
-      total_bytes: mediaData.length,
-      media_type: 'video/mp4',
-      media_category: 'tweet_video'
-    });
-
-    const mediaId = initResponse.media_id_string;
-
-    console.log('Uploading media in segments...');
-    const segmentSize = 5 * 1024 * 1024; // 5MB per segment
-    for (let i = 0; i < mediaData.length; i += segmentSize) {
-      const segment = mediaData.slice(i, i + segmentSize);
-      await client.post('media/upload', {
-        command: 'APPEND',
-        media_id: mediaId,
-        segment_index: Math.floor(i / segmentSize),
-        media: segment.toString('base64')
-      });
-    }
-
-    console.log('Finalizing media upload...');
-    const finalizeResponse = await client.post('media/upload', {
-      command: 'FINALIZE',
-      media_id: mediaId
-    });
-
-    const { processing_info } = finalizeResponse;
-    if (processing_info) {
-      let state = processing_info.state;
-      while (state !== 'succeeded') {
-        if (state === 'failed') {
-          throw new Error('Video processing failed.');
-        }
-
-        const waitTime = processing_info.check_after_secs * 1000;
-        console.log(`Waiting for ${waitTime} milliseconds for processing...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-
-        const statusResponse = await client.get('media/upload', {
-          command: 'STATUS',
-          media_id: mediaId
-        });
-
-        state = statusResponse.processing_info.state;
-      }
-    }
-
-    console.log('Media uploaded, posting tweet...');
-    const tweetResponse = await client.post('statuses/update', {
-      status: 'Check out this TikTok video!',
-      media_ids: mediaId
-    });
-    console.log('Video posted to Twitter', tweetResponse);
-  } catch (e) {
-    console.error('Error posting tweet:', e);
+    // Publicar un tweet usando API v2
+    const response = await rwClient.v2.tweet('Este es mi primera publicacion');
+    console.log('Tweet publicado:', response.data);
+  } catch (error) {
+    console.error('Error publicando el tweet:', error);
   }
 };
-
-
 
 
 const monitorTikTokLikes = async () => {
